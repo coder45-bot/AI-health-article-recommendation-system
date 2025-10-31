@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Health Article Recommender</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      background: linear-gradient(to bottom right, #D1FAE5, #DBEAFE, #FCE7F3);
+      min-height: 100vh;
+    }
+    .floating-icon {
+      position: absolute;
+      opacity: 0.1;
+      animation: float 6s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+  </style>
+</head>
+
+<body class="relative">
+
+  <!-- Floating Icons -->
+  <i data-lucide="heart-pulse" class="floating-icon text-red-500 text-9xl top-10 left-10"></i>
+  <i data-lucide="stethoscope" class="floating-icon text-green-400 text-8xl bottom-20 right-10"></i>
+
+  <div class="max-w-5xl mx-auto py-12 px-6">
+    <div class="text-center mb-10" data-aos="fade-down">
+      <h1 class="text-5xl font-extrabold text-blue-700">AI Health Article Recommender</h1>
+      <p class="text-gray-700 mt-2">Get personalized health article recommendations instantly.</p>
+    </div>
+
+    <!-- Form Card -->
+    <div class="bg-white/80 backdrop-blur-md shadow-xl rounded-3xl p-8 mb-12 border border-blue-100" data-aos="zoom-in">
+      <form id="recommendForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">Name</label>
+          <input id="name" type="text" required placeholder="Enter your name" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">Age</label>
+          <input id="age" type="number" required min="1" max="120" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">Body Part</label>
+          <select id="body_part" required class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500">
+            <option value="">-- Select Body Part --</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-medium text-gray-700 mb-1">Health Condition</label>
+          <select id="condition" required class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500">
+            <option value="">-- Select Condition --</option>
+          </select>
+        </div>
+        <div class="md:col-span-2 text-center mt-4">
+          <button type="submit" class="bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold py-3 px-10 rounded-full hover:shadow-lg transform hover:scale-105 transition">
+            Get Recommendations
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Results -->
+    <div id="results" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+  </div>
+
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script>
+    AOS.init();
+    lucide.createIcons();
+
+    const bodyPartSelect = document.getElementById("body_part");
+    const conditionSelect = document.getElementById("condition");
+    const resultsDiv = document.getElementById("results");
+
+    const healthConditions = {
+      Heart: ["Arrhythmia", "Heart Attack", "High Blood Pressure", "Heart Failure", "Coronary Artery Disease"],
+      Brain: ["Migraine", "Stroke", "Epilepsy", "Parkinson's", "Depression"],
+      Lungs: ["Asthma", "Pneumonia", "COPD", "Tuberculosis", "Bronchitis"],
+      Liver: ["Hepatitis", "Cirrhosis", "Fatty Liver", "Liver Cancer", "Jaundice"],
+      Kidney: ["Kidney Stones", "UTI", "Kidney Failure", "Nephritis", "Proteinuria"],
+      Bones: ["Osteoporosis", "Fracture", "Arthritis", "Scoliosis", "Bone Cancer"],
+      Eyes: ["Cataract", "Glaucoma", "Conjunctivitis", "Dry Eye", "Macular Degeneration"],
+      Skin: ["Eczema", "Psoriasis", "Acne", "Fungal Infection", "Skin Cancer"],
+      "Digestive System": ["Acidity", "Ulcer", "IBS", "Constipation", "Gastritis"],
+      "Immune System": ["Lupus", "Rheumatoid Arthritis", "HIV", "Allergies", "Autoimmune Diseases"]
+    };
+
+    // Populate body parts
+    Object.keys(healthConditions).forEach(part => {
+      const opt = document.createElement("option");
+      opt.value = part;
+      opt.textContent = part;
+      bodyPartSelect.appendChild(opt);
+    });
+
+    // Populate conditions dynamically
+    bodyPartSelect.addEventListener("change", () => {
+      const selected = bodyPartSelect.value;
+      conditionSelect.innerHTML = "<option value=''>-- Select Condition --</option>";
+      if (selected && healthConditions[selected]) {
+        healthConditions[selected].forEach(cond => {
+          const opt = document.createElement("option");
+          opt.value = cond;
+          opt.textContent = cond;
+          conditionSelect.appendChild(opt);
+        });
+      }
+    });
+
+    // Handle recommendations
+    document.getElementById("recommendForm").addEventListener("submit", async e => {
+      e.preventDefault();
+
+      const payload = {
+        name: document.getElementById("name").value.trim(),
+        age: parseInt(document.getElementById("age").value),
+        body_part: bodyPartSelect.value,
+        condition: conditionSelect.value
+      };
+
+      resultsDiv.innerHTML = "<p class='text-center text-gray-600 col-span-2 animate-pulse'>Loading recommendations...</p>";
+
+      try {
+        const res = await axios.post("http://127.0.0.1:8000/recommend", payload);
+        const recs = res.data.recommendations;
+
+        if (!recs || recs.length === 0) {
+          resultsDiv.innerHTML = "<p class='text-center text-red-500 col-span-2'>No articles found.</p>";
+          return;
+        }
+
+        resultsDiv.innerHTML = recs.map(art => `
+          <div class="bg-white/80 backdrop-blur-md p-6 rounded-2xl border border-blue-100 shadow hover:shadow-2xl transform hover:-translate-y-1 transition" data-aos="fade-up">
+            <h2 class="text-xl font-semibold text-blue-700 mb-1">${art.title}</h2>
+            <p class="text-sm text-gray-600 mb-2">${art.source} • ${art.date}</p>
+            <p class="text-gray-700 mb-3">${art.content}</p>
+            <a href="${art.link}" target="_blank" class="text-cyan-600 font-medium hover:underline">🔗 Read Full Article</a>
+          </div>
+        `).join("");
+
+      } catch (err) {
+        console.error(err);
+        resultsDiv.innerHTML = "<p class='text-center text-red-500 col-span-2'>Error fetching recommendations.</p>";
+      }
+    });
+  </script>
+</body>
+</html>
